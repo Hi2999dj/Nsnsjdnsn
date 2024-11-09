@@ -1,0 +1,69 @@
+-- Lock-On Script
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+local camera = game.Workspace.CurrentCamera
+
+-- Settings
+local lockOnRange = 100 -- Range to search for targets
+local lockOnSpeed = 5 -- Speed of locking onto the target
+
+-- Function to find the nearest target
+local function getNearestTarget()
+    local closestTarget = nil
+    local shortestDistance = lockOnRange
+
+    -- Iterate through all the NPCs or players
+    for _, target in pairs(game.Workspace:GetChildren()) do
+        if target:FindFirstChild("Humanoid") and target ~= player.Character then
+            local distance = (target.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            if distance < shortestDistance then
+                closestTarget = target
+                shortestDistance = distance
+            end
+        end
+    end
+
+    return closestTarget
+end
+
+-- Function to smoothly rotate towards the target
+local function lockOnToTarget(target)
+    if target then
+        -- Get direction to the target
+        local direction = (target.HumanoidRootPart.Position - camera.CFrame.Position).unit
+
+        -- Smoothly rotate the camera
+        local targetCFrame = CFrame.lookAt(camera.CFrame.Position, target.HumanoidRootPart.Position)
+        camera.CFrame = camera.CFrame:Lerp(targetCFrame, lockOnSpeed * game:GetService("RunService").Heartbeat:Wait())
+    end
+end
+
+-- Lock-On Mechanism
+local lockOnTarget = nil
+local isLockedOn = false
+
+-- Listen for "E" key press to lock-on
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    -- Ignore input if the game has already processed it (e.g., if it's being used in a GUI)
+    if gameProcessed then return end
+
+    -- Check if the key pressed is "E" and not another input (like movement keys)
+    if input.KeyCode == Enum.KeyCode.E then
+        if not isLockedOn then
+            -- When "E" is pressed, find and lock onto the target
+            lockOnTarget = getNearestTarget()
+            isLockedOn = true
+        else
+            -- If already locked on, reset the lock-on
+            lockOnTarget = nil
+            isLockedOn = false
+        end
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    -- If there's a locked target, rotate towards it
+    if lockOnTarget then
+        lockOnToTarget(lockOnTarget)
+    end
+end)
